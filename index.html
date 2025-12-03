@@ -42,7 +42,6 @@ let allData = [];
 async function fetchPage(docNO, page) {
   const url = `https://expense.one-fit.com/Program/Expense/AjaxRequest_FA_PO.aspx?key=getpomndetailforpage&docNO=${docNO}&mode=VIEW&pageSize=20&pageNumber=${page}&_=${Date.now()}`;
   try {
-    // Dùng corsproxy.io để vượt CORS khi chạy trên GitHub Pages
     const resp = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
     const json = await resp.json();
     return json.data || json.rows || json || [];
@@ -53,7 +52,7 @@ async function fetchPage(docNO, page) {
 }
 
 async function loadData() {
-  const docNO = document.getElementById("docNO.value.trim();
+  const docNO = document.getElementById("docNO").value.trim();
   const maxPages = parseInt(document.getElementById("maxPages").value) || 50;
   const status = document.getElementById("status");
   const result = document.getElementById("result");
