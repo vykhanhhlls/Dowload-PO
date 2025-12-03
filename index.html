@@ -42,7 +42,7 @@ let allData = [];
 async function fetchPage(docNO, page) {
   const url = `https://expense.one-fit.com/Program/Expense/AjaxRequest_FA_PO.aspx?key=getpomndetailforpage&docNO=${docNO}&mode=VIEW&pageSize=20&pageNumber=${page}&_=${Date.now()}`;
   try {
-    const resp = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
+    const resp = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
     const json = await resp.json();
     return json.data || json.rows || json || [];
   } catch (e) {
