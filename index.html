@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>OneFit PO Viewer & Exporter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  body {font-family: Arial, sans-serif; margin:0; padding:20px; background:#f0f7ff;}
+  .card {max-width:1200px; margin:auto; background:white; padding:30px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.1);}
+  input, button, select {padding:12px 16px; margin:5px; font-size:16px; border-radius:8px; border:1px solid #ccc;}
+  button {background:#0066cc; color:white; border:none; cursor:pointer; min-width:180px;}
+  button:hover {background:#0052a3;}
+  button:nth-child(2) {background:#28a745;}
+  button:nth-child(3) {background:#dc3545;}
+  #status {margin:20px 0; padding:15px; background:#e3f2fd; border-radius:8px; font-weight:bold; font-size:17px;}
+  table {width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;}
+  th {background:#0066cc; color:white; position:sticky; top:0; padding:12px;}
+  td {padding:10px; border:1px solid #ddd; word-wrap:break-word;}
+  tr:nth-child(even) {background:#f8fbff;}
+  .loading {color:#d35400;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2 style="text-align:center;color:#0066cc;">OneFit – Xem & Tải chi tiết PO</h2>
+  
+  Mã PO: <input type="text" id="docNO" value="TPP7E991100003" placeholder="Nhập mã PO" style="width:220px;">
+  
+  Số trang tối đa: <input type="number" id="maxPages" value="50" min="1" max="500" style="width:100px;">
+  
+  <button onclick="loadData()">XEM BẢNG</button>
+  <button onclick="exportExcel()">TẢI EXCEL</button>
+  <button onclick="clearTable()">XÓA BẢNG</button>
+  
+  <div id="status">Sẵn sàng – Nhập mã PO rồi bấm "XEM BẢNG"</div>
+  <div id="result"></div>
+</div>
+
+<script>
+let allData = [];
+
+async function fetchPage(docNO, page) {
+  const url = `https://expense.one-fit.com/Program/Expense/AjaxRequest_FA_PO.aspx?key=getpomndetailforpage&docNO=${docNO}&mode=VIEW&pageSize=20&pageNumber=${page}&_=${Date.now()}`;
+  try {
+    // Dùng corsproxy.io để vượt CORS khi chạy trên GitHub Pages
+    const resp = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
+    const json = await resp.json();
+    return json.data || json.rows || json || [];
+  } catch (e) {
+    console.error("Lỗi trang " + page, e);
+    return [];
+  }
+}
+
+async function loadData() {
+  const docNO = document.getElementById("docNO.value.trim();
+  const maxPages = parseInt(document.getElementById("maxPages").value) || 50;
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+  
+  if (!docNO) return alert("Vui lòng nhập mã PO");
+  
+  status.innerHTML = "<span class='loading'>Đang tải trang 1...</span>";
+  result.innerHTML = "";
+  allData = [];
+  
+  for (let p = 1; p <= maxPages; p++) {
+    status.innerHTML = `<span class='loading'>Đang tải trang ${p}...</span>`;
+    const rows = await fetchPage(docNO, p);
+    if (rows.length === 0 && p > 1) {
+      status.textContent = `Đã hết dữ liệu tại trang ${p-1}. Dừng lại.`;
+      break;
+    }
+    allData = allData.concat(rows);
+    await new Promise(r => setTimeout(r, 400)); // tránh bị block
+  }
+  
+  if (allData.length === 0) {
+    status.textContent = "Không có dữ liệu cho mã PO này";
+    return;
+  }
+  
+  const cols = Object.keys(allData[0]);
+  let html = "<table><tr>" + cols.map(c => `<th>${c}</th>`).join("") + "</tr>";
+  allData.forEach(row => {
+    html += "<tr>" + cols.map(c => `<td>${row[c] ?? ""}</td>`).join("") + "</tr>";
+  });
+  html += "</table>";
+  result.innerHTML = html;
+  status.innerHTML = `HOÀN TẤT! Đã tải <b>${allData.length}</b> dòng – Bấm "TẢI EXCEL" để xuất file`;
+}
+
+function exportExcel() {
+  if (allData.length === 0) return alert("Chưa có dữ liệu để xuất");
+  const ws = XLSX.utils.json_to_sheet(allData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "PO_Detail");
+  XLSX.writeFile(wb, `PO_${document.getElementById("docNO").value}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  document.getElementById("status").textContent = "Đã tải file Excel về máy!";
+}
+
+function clearTable() {
+  document.getElementById("result").innerHTML = "";
+  allData = [];
+  document.getElementById("status").textContent = "Đã xóa bảng";
+}
+</script>
+</body>
+</html>
